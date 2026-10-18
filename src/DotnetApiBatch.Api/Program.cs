@@ -20,12 +20,12 @@ builder.Services.AddOpenApi();
 builder.Services.AddData(builder.Configuration);
 // Catalog
 builder.Services.AddScoped<ProductService>();
-builder.Services.AddScoped<ProductRepository>();
+builder.Services.AddScoped<IProductRepository, ProductRepository>();
 // Customers
-builder.Services.AddScoped<CustomerRepository>();
+builder.Services.AddScoped<ICustomerRepository, CustomerRepository>();
 // Orders
 builder.Services.AddScoped<OrderService>();
-builder.Services.AddScoped<OrderRepository>();
+builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 
 var app = builder.Build();
 

@@ -21,15 +21,16 @@ DB は PostgreSQL、データアクセスは EF Core を使います。
 │   ├── DotnetApiBatch.Api/       ASP.NET Core Web API
 │   └── DotnetApiBatch.Batch/     バッチ（コンソールアプリ）
 └── tests/
-    └── DotnetApiBatch.Data.Tests/   Data のテスト（xUnit）。依存関係のルールを確認する
+    ├── DotnetApiBatch.Data.Tests/   Data のテスト（xUnit）。依存関係のルールを確認する
+    └── DotnetApiBatch.Api.Tests/    Api の単体テスト（xUnit）。サービスの業務ロジックを確認する
 ```
 
 ### プロジェクト参照
 
 ```
-DotnetApiBatch.Api ────────┐
-DotnetApiBatch.Batch ──────┼──▶ DotnetApiBatch.Data
-DotnetApiBatch.Data.Tests ─┘
+DotnetApiBatch.Api.Tests ──▶ DotnetApiBatch.Api ──┐
+DotnetApiBatch.Batch ─────────────────────────────┼──▶ DotnetApiBatch.Data
+DotnetApiBatch.Data.Tests ────────────────────────┘
 ```
 
 - API と Batch で共有するのは、`Data` のエンティティ・EF Core の設定・DbContext と、用語を定義する絞り込み条件だけです。
@@ -157,6 +158,7 @@ Batch  Repositories/OrderRepository            CancelPendingOrderedBeforeAsync /
 ```
 
 - リポジトリは `AppDbContext` をコンストラクターで受け取り、そのアプリの `Program.cs` で `AddScoped` で登録します。
+- API のリポジトリは、同じファイルにインターフェース（`I*Repository`）を定義し、`AddScoped<IOrderRepository, OrderRepository>()` のように登録します。サービスはインターフェースに依存するので、単体テストでモックに差し替えられます（[テスト](#テスト)）。
 - API と Batch のリポジトリは別のアセンブリにあるので、お互いのメソッドは見えません。
 - 両方で使う絞り込み条件は、Data の各ドメインのフォルダーに `IQueryable` の拡張メソッド（`*Queries`）として置きます。
 
@@ -189,7 +191,7 @@ src/DotnetApiBatch.Api/
 |---|---|
 | `*Controller` | HTTP の入口。リクエストを受け取り、サービスを呼び、結果を返す |
 | `*Service` | 業務ロジック。存在チェックなどの業務上の検証と、リポジトリの組み合わせ |
-| `*Repository` | DB アクセス（AppDbContext を使う） |
+| `*Repository` | DB アクセス（AppDbContext を使う）。インターフェース `I*Repository` を実装し、サービスはインターフェースに依存する |
 | `*Contracts` | リクエスト / レスポンスの型 |
 
 ```
@@ -270,6 +272,18 @@ OrdersController    ──┴▶ Orders/OrderService   ──▶ CustomerReposit
 dotnet build
 dotnet test
 ```
+
+### テスト
+
+| 種類 | 対象 | 方法 | プロジェクト |
+|---|---|---|---|
+| 依存関係のルール | Data | NetArchTest | `Data.Tests` |
+| 単体テスト | API のサービス | リポジトリを NSubstitute でモックし、時刻は `FakeTimeProvider` で固定する。DB は使わない | `Api.Tests` |
+
+- C# のメソッドは既定で virtual ではなく、モックのライブラリは virtual なメンバーしか差し替えられません。そのため、モックにしたいもの（リポジトリ）はインターフェースにします。
+- サービスはインターフェースにしていません。コントローラーはサービスを呼ぶだけなので、サービスをモックにしてコントローラーを単体テストしても確認できることが少ないためです。
+- `Api.Tests` には `NSubstitute.Analyzers.CSharp` を入れています。virtual でないメンバーをモックしようとするなど、NSubstitute の誤った使い方をビルド時に検出します。
+- リポジトリ（SQL への変換、`ExecuteUpdateAsync` など）は、モックや EF Core の InMemory プロバイダーでは正しく確認できません。テストするときは、Testcontainers などで本物の PostgreSQL を使います（未導入）。
 
 ### ビルド設定とパッケージのバージョン
 
@@ -357,10 +371,10 @@ ConnectionStrings__AppDb="Host=...;Database=...;Username=...;Password=..."
 ## プロジェクトの追加
 
 ```sh
-# 例: Api のテストプロジェクトを追加する
-dotnet new xunit -o tests/DotnetApiBatch.Api.Tests
-dotnet sln add tests/DotnetApiBatch.Api.Tests
-dotnet add tests/DotnetApiBatch.Api.Tests reference src/DotnetApiBatch.Api
+# 例: Batch のテストプロジェクトを追加する
+dotnet new xunit -o tests/DotnetApiBatch.Batch.Tests
+dotnet sln add tests/DotnetApiBatch.Batch.Tests
+dotnet add tests/DotnetApiBatch.Batch.Tests reference src/DotnetApiBatch.Batch
 ```
 
 `dotnet new` で作った csproj は Central Package Management に対応していないので、作成後に次のように直します。直さないと、ビルド時に `NU1008` のエラーになります。
@@ -408,4 +422,12 @@ dotnet add tests/DotnetApiBatch.Data.Tests package NetArchTest.Rules
 dotnet new buildprops
 dotnet new packagesprops
 dotnet new globaljson --sdk-version 10.0.400 --roll-forward latestFeature
+
+# Api の単体テスト（csproj は Data.Tests をもとに作成）
+dotnet sln add tests/DotnetApiBatch.Api.Tests --solution-folder tests
+dotnet add tests/DotnetApiBatch.Api.Tests package NSubstitute
+dotnet add tests/DotnetApiBatch.Api.Tests package NSubstitute.Analyzers.CSharp
+dotnet add tests/DotnetApiBatch.Api.Tests package Microsoft.Extensions.TimeProvider.Testing
 ```
+
+`dotnet add package` は `Directory.Packages.props` の空行を消し、追加する場所も選べません。追加した後に、該当するグループへ移して空行を戻しています。

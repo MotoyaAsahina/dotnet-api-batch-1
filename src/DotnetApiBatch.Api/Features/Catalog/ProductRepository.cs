@@ -4,7 +4,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace DotnetApiBatch.Api.Features.Catalog;
 
-public class ProductRepository(AppDbContext db)
+public interface IProductRepository
+{
+    Task<IReadOnlyList<ProductResponse>> ListAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// 注文作成時に単価を参照するため、指定した ID の商品を取得する。
+    /// </summary>
+    Task<IReadOnlyList<Product>> ListByIdsAsync(IReadOnlyCollection<long> ids, CancellationToken cancellationToken);
+}
+
+public class ProductRepository(AppDbContext db) : IProductRepository
 {
     public async Task<IReadOnlyList<ProductResponse>> ListAsync(CancellationToken cancellationToken) =>
         await db.Products
@@ -13,9 +23,6 @@ public class ProductRepository(AppDbContext db)
             .Select(p => new ProductResponse(p.Id, p.Name, p.Price))
             .ToListAsync(cancellationToken);
 
-    /// <summary>
-    /// 注文作成時に単価を参照するため、指定した ID の商品を取得する。
-    /// </summary>
     public async Task<IReadOnlyList<Product>> ListByIdsAsync(
         IReadOnlyCollection<long> ids, CancellationToken cancellationToken) =>
         await db.Products

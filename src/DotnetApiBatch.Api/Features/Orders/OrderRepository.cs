@@ -7,7 +7,19 @@ namespace DotnetApiBatch.Api.Features.Orders;
 /// <summary>
 /// API 固有の注文リポジトリ。画面表示用に、レスポンスの形へ直接射影して取得する。
 /// </summary>
-public class OrderRepository(AppDbContext db)
+public interface IOrderRepository
+{
+    Task<OrderDetailResponse?> GetDetailAsync(long id, CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<OrderSummaryResponse>> ListByCustomerAsync(
+        long customerId, OrderStatus? status, CancellationToken cancellationToken);
+
+    void Add(Order order);
+
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken);
+}
+
+public class OrderRepository(AppDbContext db) : IOrderRepository
 {
     public Task<OrderDetailResponse?> GetDetailAsync(long id, CancellationToken cancellationToken) =>
         db.Orders.AsNoTracking()
