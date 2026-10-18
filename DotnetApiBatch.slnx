@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/DotnetApiBatch.Api/DotnetApiBatch.Api.csproj" />
+    <Project Path="src/DotnetApiBatch.Batch/DotnetApiBatch.Batch.csproj" />
+    <Project Path="src/DotnetApiBatch.Data/DotnetApiBatch.Data.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/DotnetApiBatch.Data.Tests/DotnetApiBatch.Data.Tests.csproj" />
+  </Folder>
+</Solution>

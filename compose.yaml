@@ -1,0 +1,23 @@
+services:
+  postgres:
+    image: postgres:18.3-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ports:
+      - "5432:5432"
+    volumes:
+      # PostgreSQL 18 以降のイメージは PGDATA が /var/lib/postgresql/18/docker なので、
+      # その親の /var/lib/postgresql をマウントする
+      - postgres-data:/var/lib/postgresql
+      # 初回起動時（ボリュームが空のとき）だけ、ファイル名順に実行される
+      - ./db/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:
