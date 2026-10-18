@@ -15,7 +15,7 @@ public interface IOrderRepository
         long customerId, OrderStatus? status, CancellationToken cancellationToken);
 
     /// <summary>
-    /// 注文を追加予定として登録する。DB への保存は <see cref="Persistence.IUnitOfWork"/> で行う。
+    /// 注文を追加予定として登録する。DB への保存は <see cref="IUnitOfWork"/> で行う。
     /// </summary>
     void Add(Order order);
 }

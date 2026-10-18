@@ -4,7 +4,6 @@ using DotnetApiBatch.Api.Errors;
 using DotnetApiBatch.Api.Features.Catalog;
 using DotnetApiBatch.Api.Features.Customers;
 using DotnetApiBatch.Api.Features.Orders;
-using DotnetApiBatch.Api.Persistence;
 using DotnetApiBatch.Data;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,10 +16,8 @@ builder.Services.AddErrorHandling();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// 共通設定（DbContext）
+// 共通設定（DbContext、Unit of Work）
 builder.Services.AddData(builder.Configuration);
-// リポジトリでの変更をまとめて保存する
-builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // Catalog
 builder.Services.AddScoped<ProductService>();
 builder.Services.AddScoped<IProductRepository, ProductRepository>();

@@ -14,7 +14,7 @@ var builder = Host.CreateApplicationBuilder(new HostApplicationBuilderSettings
     ContentRootPath = AppContext.BaseDirectory,
 });
 
-// 共通設定（DbContext）。バッチは大量データを扱うのでタイムアウトを長めにする
+// 共通設定（DbContext、Unit of Work）。バッチは大量データを扱うのでタイムアウトを長めにする
 builder.Services.AddData(builder.Configuration, npgsql => npgsql.CommandTimeout(300));
 // Batch のリポジトリ
 builder.Services.AddScoped<OrderRepository>();

@@ -11,7 +11,7 @@ public static class ServiceCollectionExtensions
     public const string ConnectionStringName = "AppDb";
 
     /// <summary>
-    /// API / Batch 共通の設定（DbContext、TimeProvider）を登録する。
+    /// API / Batch 共通の設定（DbContext、Unit of Work、TimeProvider）を登録する。
     /// </summary>
     /// <param name="configureNpgsql">
     /// アプリごとに変えたい Npgsql の設定（コマンドタイムアウトなど）。
@@ -32,6 +32,7 @@ public static class ServiceCollectionExtensions
                 configureNpgsql?.Invoke(npgsql);
             })
             .UseSnakeCaseNamingConvention());
+        services.AddScoped<IUnitOfWork, UnitOfWork>();
 
         services.TryAddSingleton(TimeProvider.System);
 

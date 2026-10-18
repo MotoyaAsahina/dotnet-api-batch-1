@@ -2,7 +2,7 @@ using DotnetApiBatch.Api.Errors;
 using DotnetApiBatch.Api.Features.Catalog;
 using DotnetApiBatch.Api.Features.Customers;
 using DotnetApiBatch.Api.Features.Orders;
-using DotnetApiBatch.Api.Persistence;
+using DotnetApiBatch.Data;
 using DotnetApiBatch.Data.Catalog;
 using DotnetApiBatch.Data.Orders;
 using Microsoft.Extensions.Time.Testing;

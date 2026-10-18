@@ -33,7 +33,7 @@ DotnetApiBatch.Batch ───────────────────�
 DotnetApiBatch.Data.Tests ────────────────────────┘
 ```
 
-- API と Batch で共有するのは、`Data` のエンティティ・EF Core の設定・DbContext と、用語を定義する絞り込み条件だけです。
+- API と Batch で共有するのは、`Data` のエンティティ・EF Core の設定・DbContext・Unit of Work と、用語を定義する絞り込み条件だけです。
 - リポジトリとサービス（業務ロジック）は共有せず、`Api` と `Batch` それぞれに置きます。
 - `Api` と `Batch` は互いに参照しません。そのため、片方のリポジトリやサービスをもう片方から使うことはできません。
 - `Data` は `Api`・`Batch`・ASP.NET Core に依存しません（`Data.Tests` で確認しています）。
@@ -90,6 +90,7 @@ docker compose exec postgres psql -U app -d app
 ```
 src/DotnetApiBatch.Data/
 ├── AppDbContext.cs
+├── UnitOfWork.cs                    IUnitOfWork。リポジトリでの変更をまとめて保存する
 ├── ServiceCollectionExtensions.cs   AddData()
 ├── Customers/    Customer / CustomerConfiguration
 ├── Catalog/      Product / ProductConfiguration
@@ -128,6 +129,7 @@ Orders ──▶ Customers
 `AddData()` で、API / Batch 共通の以下の設定を登録します。
 
 - `AppDbContext`（Npgsql、接続リトライ、スネークケースの命名規則）
+- `IUnitOfWork`
 - `TimeProvider`
 
 接続文字列は各アプリの設定ファイルの `ConnectionStrings:AppDb` から読み込みます。
@@ -159,7 +161,8 @@ Batch  Repositories/OrderRepository            CancelPendingOrderedBeforeAsync /
 
 - リポジトリは `AppDbContext` をコンストラクターで受け取り、そのアプリの `Program.cs` で `AddScoped` で登録します。
 - API のリポジトリは、同じファイルにインターフェース（`I*Repository`）を定義し、`AddScoped<IOrderRepository, OrderRepository>()` のように登録します。サービスはインターフェースに依存するので、単体テストでモックに差し替えられます（[テスト](#テスト)）。
-- API のリポジトリは `SaveChangesAsync` を持ちません。保存は Unit of Work（[Persistence/UnitOfWork.cs](src/DotnetApiBatch.Api/Persistence/UnitOfWork.cs) の `IUnitOfWork`）で行い、サービスがリポジトリで `Add` などをした後に 1 回だけ呼びます。1 リクエストの中ではどのリポジトリも同じ `AppDbContext`（Scoped）を使うので、複数のリポジトリでの変更も 1 つのトランザクションで保存されます。
+- リポジトリは `SaveChangesAsync` を持ちません。保存は Data の Unit of Work（[UnitOfWork.cs](src/DotnetApiBatch.Data/UnitOfWork.cs) の `IUnitOfWork`）で行い、サービスがリポジトリで `Add` などをした後に 1 回だけ呼びます。1 リクエストの中ではどのリポジトリも同じ `AppDbContext`（Scoped）を使うので、複数のリポジトリでの変更も 1 つのトランザクションで保存されます。
+- Unit of Work は API / Batch で共有するので、保存（確定の境界）だけを持たせます。リポジトリはアプリごとに異なるので、Unit of Work のプロパティにはせず、サービスに直接渡します。
 - API と Batch のリポジトリは別のアセンブリにあるので、お互いのメソッドは見えません。
 - 両方で使う絞り込み条件は、Data の各ドメインのフォルダーに `IQueryable` の拡張メソッド（`*Queries`）として置きます。
 
@@ -185,7 +188,6 @@ src/DotnetApiBatch.Api/
 │   ├── Catalog/    ProductService / ProductRepository / ProductContracts
 │   ├── Customers/  CustomerRepository
 │   └── Orders/     OrderService / OrderRepository / OrderContracts
-├── Persistence/    UnitOfWork。リポジトリでの変更をまとめて保存する
 └── Errors/         エラーの定義、アプリの例外、エラーレスポンスへの変換
 ```
 
@@ -194,7 +196,7 @@ src/DotnetApiBatch.Api/
 | `*Controller` | HTTP の入口。リクエストを受け取り、サービスを呼び、結果を返す |
 | `*Service` | 業務ロジック。存在チェックなどの業務上の検証と、リポジトリの組み合わせ |
 | `*Repository` | DB アクセス（AppDbContext を使う）。インターフェース `I*Repository` を実装し、サービスはインターフェースに依存する |
-| `UnitOfWork` | リポジトリでの変更の保存（`SaveChangesAsync`）。サービスは `IUnitOfWork` に依存する |
+| `IUnitOfWork`（Data） | リポジトリでの変更の保存（`SaveChangesAsync`）。`AddData` で登録される |
 | `*Contracts` | リクエスト / レスポンスの型 |
 
 ```
@@ -202,7 +204,7 @@ Controllers/                Features/
 ProductsController  ──▶ Catalog/ProductService ──▶ ProductRepository
 CustomersController ──┐
 OrdersController    ──┴▶ Orders/OrderService   ──▶ CustomerRepository / ProductRepository / OrderRepository
-                                                └─▶ Persistence/UnitOfWork
+                                                └─▶ IUnitOfWork（Data）
 ```
 
 - 依存の向きは Controllers → Features → Data です。Features から Controllers は参照しません。

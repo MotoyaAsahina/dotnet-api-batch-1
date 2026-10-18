@@ -1,7 +1,7 @@
 using DotnetApiBatch.Api.Errors;
 using DotnetApiBatch.Api.Features.Catalog;
 using DotnetApiBatch.Api.Features.Customers;
-using DotnetApiBatch.Api.Persistence;
+using DotnetApiBatch.Data;
 using DotnetApiBatch.Data.Orders;
 
 namespace DotnetApiBatch.Api.Features.Orders;
