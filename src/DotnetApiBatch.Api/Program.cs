@@ -16,7 +16,7 @@ builder.Services.AddErrorHandling();
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-// 共通設定（DbContext）
+// 共通設定（DbContext、Unit of Work）
 builder.Services.AddData(builder.Configuration);
 // Catalog
 builder.Services.AddScoped<ProductService>();

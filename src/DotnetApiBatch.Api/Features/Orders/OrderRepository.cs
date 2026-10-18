@@ -14,9 +14,10 @@ public interface IOrderRepository
     Task<IReadOnlyList<OrderSummaryResponse>> ListByCustomerAsync(
         long customerId, OrderStatus? status, CancellationToken cancellationToken);
 
+    /// <summary>
+    /// 注文を追加予定として登録する。DB への保存は <see cref="IUnitOfWork"/> で行う。
+    /// </summary>
     void Add(Order order);
-
-    Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }
 
 public class OrderRepository(AppDbContext db) : IOrderRepository
@@ -57,7 +58,4 @@ public class OrderRepository(AppDbContext db) : IOrderRepository
     }
 
     public void Add(Order order) => db.Orders.Add(order);
-
-    public Task<int> SaveChangesAsync(CancellationToken cancellationToken) =>
-        db.SaveChangesAsync(cancellationToken);
 }
