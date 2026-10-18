@@ -9,9 +9,9 @@ namespace DotnetApiBatch.Api.Features.Orders;
 /// 業務上のエラーは <see cref="AppException"/> を投げ、<see cref="AppExceptionHandler"/> がレスポンスに変換する。
 /// </remarks>
 public class OrderService(
-    CustomerRepository customers,
-    ProductRepository products,
-    OrderRepository orders,
+    ICustomerRepository customers,
+    IProductRepository products,
+    IOrderRepository orders,
     TimeProvider timeProvider)
 {
     public async Task<OrderDetailResponse> GetDetailAsync(long id, CancellationToken cancellationToken) =>

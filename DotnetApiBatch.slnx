@@ -5,6 +5,7 @@
     <Project Path="src/DotnetApiBatch.Data/DotnetApiBatch.Data.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/DotnetApiBatch.Api.Tests/DotnetApiBatch.Api.Tests.csproj" />
     <Project Path="tests/DotnetApiBatch.Data.Tests/DotnetApiBatch.Data.Tests.csproj" />
   </Folder>
 </Solution>
