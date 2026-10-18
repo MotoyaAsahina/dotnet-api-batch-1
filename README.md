@@ -234,7 +234,7 @@ OrdersController    ──┴▶ Orders/OrderService   ──▶ CustomerReposit
 | `code` | エラーの種類。クライアントはこれで処理を分ける |
 | `message` | 利用者向けのメッセージ |
 | `details` | 項目ごとのエラー（検証エラーのときだけ）。本文全体のエラー（JSON が壊れているなど）は `field` を省略する |
-| `traceId` | ログと突き合わせるための ID |
+| `traceId` | ログと突き合わせるための ID。W3C の traceparent 形式（`00-{TraceId}-{SpanId}-{フラグ}`）で、ログのスコープに出る `TraceId` / `SpanId` と同じ値を含む |
 
 #### エラーの定義（[Errors/ErrorDefinitions.cs](src/DotnetApiBatch.Api/Errors/ErrorDefinitions.cs)）
 

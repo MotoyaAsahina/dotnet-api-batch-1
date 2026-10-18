@@ -8,20 +8,14 @@ namespace DotnetApiBatch.Api.Errors;
 /// <summary>
 /// 処理されなかった例外を、例外の種類に応じたエラーレスポンスに変換する。
 /// どの例外もここで処理するので、スタックトレースはレスポンスに含まれず、ログにだけ出る。
+/// クライアントが接続を切った場合（499）と、レスポンスを書き始めた後の例外は、
+/// ExceptionHandlerMiddleware が処理するので、ここは呼ばれない。
 /// </summary>
 public class AppExceptionHandler(ILogger<AppExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(
         HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
-        // クライアントが接続を切った場合は、返す相手がいないのでレスポンスを書かない
-        if (exception is OperationCanceledException && httpContext.RequestAborted.IsCancellationRequested)
-        {
-            logger.LogInformation("クライアントがリクエストを中断しました");
-            httpContext.Response.StatusCode = 499;
-            return true;
-        }
-
         var (definition, message, details) = Map(exception);
 
         switch (definition.StatusCode)
