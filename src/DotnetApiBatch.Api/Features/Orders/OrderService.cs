@@ -1,6 +1,7 @@
 using DotnetApiBatch.Api.Errors;
 using DotnetApiBatch.Api.Features.Catalog;
 using DotnetApiBatch.Api.Features.Customers;
+using DotnetApiBatch.Api.Persistence;
 using DotnetApiBatch.Data.Orders;
 
 namespace DotnetApiBatch.Api.Features.Orders;
@@ -12,6 +13,7 @@ public class OrderService(
     ICustomerRepository customers,
     IProductRepository products,
     IOrderRepository orders,
+    IUnitOfWork unitOfWork,
     TimeProvider timeProvider)
 {
     public async Task<OrderDetailResponse> GetDetailAsync(long id, CancellationToken cancellationToken) =>
@@ -63,7 +65,7 @@ public class OrderService(
         };
 
         orders.Add(order);
-        await orders.SaveChangesAsync(cancellationToken);
+        await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return new CreateOrderResponse(order.Id);
     }

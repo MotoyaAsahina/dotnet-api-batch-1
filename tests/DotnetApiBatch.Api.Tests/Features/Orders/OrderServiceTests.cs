@@ -2,6 +2,7 @@ using DotnetApiBatch.Api.Errors;
 using DotnetApiBatch.Api.Features.Catalog;
 using DotnetApiBatch.Api.Features.Customers;
 using DotnetApiBatch.Api.Features.Orders;
+using DotnetApiBatch.Api.Persistence;
 using DotnetApiBatch.Data.Catalog;
 using DotnetApiBatch.Data.Orders;
 using Microsoft.Extensions.Time.Testing;
@@ -19,11 +20,12 @@ public class OrderServiceTests
     private readonly ICustomerRepository _customers = Substitute.For<ICustomerRepository>();
     private readonly IProductRepository _products = Substitute.For<IProductRepository>();
     private readonly IOrderRepository _orders = Substitute.For<IOrderRepository>();
+    private readonly IUnitOfWork _unitOfWork = Substitute.For<IUnitOfWork>();
     private readonly OrderService _sut;
 
     public OrderServiceTests()
     {
-        _sut = new OrderService(_customers, _products, _orders, new FakeTimeProvider(Now));
+        _sut = new OrderService(_customers, _products, _orders, _unitOfWork, new FakeTimeProvider(Now));
     }
 
     // --- GetDetailAsync ---
@@ -86,7 +88,7 @@ public class OrderServiceTests
         // DB が採番した ID を、SaveChangesAsync の時点でエンティティに設定する
         Order? added = null;
         _orders.When(o => o.Add(Arg.Any<Order>())).Do(call => added = call.Arg<Order>());
-        _orders.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(_ =>
+        _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>()).Returns(_ =>
         {
             added!.Id = 999;
             return 1;
@@ -108,7 +110,7 @@ public class OrderServiceTests
         Received.InOrder(() =>
         {
             _orders.Add(Arg.Any<Order>());
-            _orders.SaveChangesAsync(Arg.Any<CancellationToken>());
+            _unitOfWork.SaveChangesAsync(Arg.Any<CancellationToken>());
         });
     }
 
@@ -140,7 +142,7 @@ public class OrderServiceTests
         var detail = Assert.Single(ex.Details!);
         Assert.Equal(new ErrorDetail("customerId", "顧客 10 が存在しません。"), detail);
         _orders.DidNotReceiveWithAnyArgs().Add(default!);
-        await _orders.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
     }
 
     [Fact]
@@ -155,7 +157,7 @@ public class OrderServiceTests
         var detail = Assert.Single(ex.Details!);
         Assert.Equal(new ErrorDetail("items", "商品 200, 300 が存在しません。"), detail);
         _orders.DidNotReceiveWithAnyArgs().Add(default!);
-        await _orders.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
+        await _unitOfWork.DidNotReceiveWithAnyArgs().SaveChangesAsync(default);
     }
 
     private void GivenProducts(params Product[] products) =>

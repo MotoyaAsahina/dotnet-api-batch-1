@@ -151,7 +151,7 @@ builder.Services.AddData(builder.Configuration, npgsql => npgsql.CommandTimeout(
 ```
 Api    Features/Customers/CustomerRepository   ExistsAsync
        Features/Catalog/ProductRepository      ListAsync / ListByIdsAsync
-       Features/Orders/OrderRepository         GetDetailAsync / ListByCustomerAsync / Add / SaveChangesAsync
+       Features/Orders/OrderRepository         GetDetailAsync / ListByCustomerAsync / Add
 Batch  Repositories/OrderRepository            CancelPendingOrderedBeforeAsync / SumShippedSalesByProductAsync
                  │
                  └── どちらも AppDbContext を直接使い、Data の OrderQueries（WithStatus / OrderedBefore）を組み合わせる
@@ -159,6 +159,7 @@ Batch  Repositories/OrderRepository            CancelPendingOrderedBeforeAsync /
 
 - リポジトリは `AppDbContext` をコンストラクターで受け取り、そのアプリの `Program.cs` で `AddScoped` で登録します。
 - API のリポジトリは、同じファイルにインターフェース（`I*Repository`）を定義し、`AddScoped<IOrderRepository, OrderRepository>()` のように登録します。サービスはインターフェースに依存するので、単体テストでモックに差し替えられます（[テスト](#テスト)）。
+- API のリポジトリは `SaveChangesAsync` を持ちません。保存は Unit of Work（[Persistence/UnitOfWork.cs](src/DotnetApiBatch.Api/Persistence/UnitOfWork.cs) の `IUnitOfWork`）で行い、サービスがリポジトリで `Add` などをした後に 1 回だけ呼びます。1 リクエストの中ではどのリポジトリも同じ `AppDbContext`（Scoped）を使うので、複数のリポジトリでの変更も 1 つのトランザクションで保存されます。
 - API と Batch のリポジトリは別のアセンブリにあるので、お互いのメソッドは見えません。
 - 両方で使う絞り込み条件は、Data の各ドメインのフォルダーに `IQueryable` の拡張メソッド（`*Queries`）として置きます。
 
@@ -167,7 +168,7 @@ API と Batch では、リポジトリの書き方を次のように分けてい
 | | API | Batch |
 |---|---|---|
 | 参照 | `AsNoTracking` で、レスポンスの形へ直接射影する | 集計クエリ（`GroupBy`）で必要な列だけを取得する |
-| 更新 | エンティティを `Add` して `SaveChangesAsync` | `ExecuteUpdateAsync` でまとめて更新し、エンティティを読み込まない |
+| 更新 | リポジトリでエンティティを `Add` し、`IUnitOfWork.SaveChangesAsync` で保存する | `ExecuteUpdateAsync` でまとめて更新し、エンティティを読み込まない |
 
 ### API の構成（コントローラー / サービス / リポジトリ）
 
@@ -184,6 +185,7 @@ src/DotnetApiBatch.Api/
 │   ├── Catalog/    ProductService / ProductRepository / ProductContracts
 │   ├── Customers/  CustomerRepository
 │   └── Orders/     OrderService / OrderRepository / OrderContracts
+├── Persistence/    UnitOfWork。リポジトリでの変更をまとめて保存する
 └── Errors/         エラーの定義、アプリの例外、エラーレスポンスへの変換
 ```
 
@@ -192,6 +194,7 @@ src/DotnetApiBatch.Api/
 | `*Controller` | HTTP の入口。リクエストを受け取り、サービスを呼び、結果を返す |
 | `*Service` | 業務ロジック。存在チェックなどの業務上の検証と、リポジトリの組み合わせ |
 | `*Repository` | DB アクセス（AppDbContext を使う）。インターフェース `I*Repository` を実装し、サービスはインターフェースに依存する |
+| `UnitOfWork` | リポジトリでの変更の保存（`SaveChangesAsync`）。サービスは `IUnitOfWork` に依存する |
 | `*Contracts` | リクエスト / レスポンスの型 |
 
 ```
@@ -199,6 +202,7 @@ Controllers/                Features/
 ProductsController  ──▶ Catalog/ProductService ──▶ ProductRepository
 CustomersController ──┐
 OrdersController    ──┴▶ Orders/OrderService   ──▶ CustomerRepository / ProductRepository / OrderRepository
+                                                └─▶ Persistence/UnitOfWork
 ```
 
 - 依存の向きは Controllers → Features → Data です。Features から Controllers は参照しません。
