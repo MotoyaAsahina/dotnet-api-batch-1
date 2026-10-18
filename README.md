@@ -8,6 +8,9 @@ DB は PostgreSQL、データアクセスは EF Core を使います。
 ```
 .
 ├── DotnetApiBatch.slnx
+├── Directory.Build.props        全プロジェクト共通のビルド設定
+├── Directory.Packages.props     パッケージのバージョン（Central Package Management）
+├── global.json                  使用する .NET SDK のバージョン
 ├── compose.yaml                 ローカル開発用の PostgreSQL
 ├── db/
 │   └── init/                    PostgreSQL の初回起動時に実行される SQL
@@ -36,7 +39,7 @@ DotnetApiBatch.Data.Tests ─┘
 
 ## 必要な環境
 
-- .NET SDK 10.0 以上
+- .NET SDK 10.0.400 以上（10.0.x の範囲。[global.json](global.json) で指定）
 - Docker（Docker Compose）
 
 ## データベース
@@ -268,6 +271,20 @@ dotnet build
 dotnet test
 ```
 
+### ビルド設定とパッケージのバージョン
+
+全プロジェクトに共通の設定は、ルートのファイルにまとめています。各 csproj には、そのプロジェクトに固有の設定だけを書きます。
+
+| ファイル | 内容 |
+|---|---|
+| [Directory.Build.props](Directory.Build.props) | `TargetFramework`・`Nullable`・`ImplicitUsings`・`TreatWarningsAsErrors`（警告をエラーにする） |
+| [Directory.Packages.props](Directory.Packages.props) | パッケージのバージョン。csproj の `PackageReference` には `Version` を書かない |
+| [global.json](global.json) | .NET SDK のバージョン。10.0.400 以上の 10.0.x を使う |
+
+- `Microsoft.Extensions.*` と `Microsoft.AspNetCore.*` のパッケージは、.NET のランタイムと同じバージョンにそろえます。
+- パッケージを追加するときは `dotnet add package` を使います。`Directory.Packages.props` にバージョンが自動で追加されます。
+- パッケージを更新するときは、`Directory.Packages.props` のバージョンを書き換えます。
+
 ## 実行
 
 先に `docker compose up -d` で DB を起動しておきます。
@@ -346,6 +363,11 @@ dotnet sln add tests/DotnetApiBatch.Api.Tests
 dotnet add tests/DotnetApiBatch.Api.Tests reference src/DotnetApiBatch.Api
 ```
 
+`dotnet new` で作った csproj は Central Package Management に対応していないので、作成後に次のように直します。直さないと、ビルド時に `NU1008` のエラーになります。
+
+- `PackageReference` の `Version` を削除する。`Directory.Packages.props` にないパッケージは、そちらに `PackageVersion` を追加する
+- `Directory.Build.props` と同じ設定（`TargetFramework`・`Nullable`・`ImplicitUsings`）を削除する
+
 ## 構築時に実行したコマンド
 
 このリポジトリは以下のコマンドで構築しました（.NET SDK 10.0.400）。
@@ -380,4 +402,10 @@ dotnet add src/DotnetApiBatch.Batch package Microsoft.Extensions.Hosting
 
 # パッケージ（依存関係のルールをテストするため）
 dotnet add tests/DotnetApiBatch.Data.Tests package NetArchTest.Rules
+
+# 共通のビルド設定・パッケージのバージョン・SDK のバージョン
+# （作成後に各 csproj から共通の設定と Version を移した）
+dotnet new buildprops
+dotnet new packagesprops
+dotnet new globaljson --sdk-version 10.0.400 --roll-forward latestFeature
 ```
